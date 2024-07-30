@@ -25,9 +25,9 @@
 - EntryInputType.PLAIN：用户输入的内容明文显示。
 - EntryInputType.PASSWORD：用户输入的内容以“*”显示。
 该属性默认为EntryInputType.PASSWORD。
-3. self.valid_password(entry_widget)：验证用户输入内容正确与否的函数。类型为App类（及其子类）的成员函数，可通过继承App类并在子类中重写该成员函数。\
-参数：entry_widget：类型为tkinter.Entry，需要用entry_widget.get()来获取用户输入内容。\
-返回值：类型为bool，代表用户输入内容正确与否。
+3. self.valid_password(entry_widget)：验证用户输入内容正确与否的函数。类型为App类（及其子类）的成员函数，可通过继承App类并在子类中重写该成员函数。
+- 参数：entry_widget：类型为tkinter.Entry，需要用entry_widget.get()来获取用户输入内容。
+- 返回值：类型为bool，代表用户输入内容正确与否。
 ## 更多使用方法
 ### 将脚本打包成exe文件
 1. 先执行如下命令安装pyinstaller：
