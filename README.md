@@ -36,10 +36,7 @@
 ```bat
 python -m pip install pyinstaller
 ```
-2. 执行如下命令将脚本打包为exe文件：
-```bat
-pyinstaller -i xh.ico -n XHBD bd.pyw
-```
+2. 执行build_exe.bat将脚本打包为exe文件：
 3. 切换至当前目录下dist\XHBD文件夹，即可执行打包好的XHBD.exe。
 ## 警告
 此程序仅用于娱乐用途，不能将其用于不合规用途。
