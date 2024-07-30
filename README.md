@@ -21,6 +21,8 @@
 - entry_input_notice：程序提示用户输入内容时显示的文本。默认为“”。
 - author_info：程序显示的作者信息。默认为“”。
 - sub_window_content：程序弹窗显示的文本。默认为“程序弹窗”。
+- input_error_notice：用户输入错误时显示的文本。默认为“输入错误。”。
+- question_after_input：用户输入正确时显示的文本。默认为“确定？”。
 2. self.entry_input_type：用户输入内容类型。类型为app_template.EntryInputType（枚举类型），包含以下两个值：
 - EntryInputType.PLAIN：用户输入的内容明文显示。
 - EntryInputType.PASSWORD：用户输入的内容以“*”显示。

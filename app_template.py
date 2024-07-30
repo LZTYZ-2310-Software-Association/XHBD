@@ -5,6 +5,9 @@ import random
 import multiprocessing
 import sys
 import enum
+import os,random
+import random,sys
+import time
 
 class EntryInputType(enum.Enum):
     PLAIN = 0
@@ -20,7 +23,9 @@ class App:
             "notice_when_choose_yes": "程序未能启动。",
             "entry_input_notice": "",
             "author_info": "",
-            "sub_window_content": "程序弹窗"}
+            "sub_window_content": "程序弹窗",
+            "input_error_notice": "输入错误。",
+            "question_after_input": "确定？"}
         self.entry_input_type = EntryInputType.PASSWORD
 
     def run(self):
@@ -45,8 +50,7 @@ class App:
         answer = msgbox.askyesno("提问", self.show_text["ask_for_choice"])
         if not answer:
             msgbox.showwarning("警告", self.show_text["warning_when_choose_no"])
-            for _ in range(10):  
-                msgbox.showinfo("作者", self.show_text["author_info"])
+            msgbox.showinfo("作者", self.show_text["author_info"])
             self.generate_windows()
         else:
             msgbox.showinfo("恭喜", self.show_text["notice_when_choose_yes"])
@@ -72,26 +76,30 @@ class App:
             (screen_width - window_width) // 2,
             (screen_height - window_height) // 2))
         if self.entry_input_type == EntryInputType.PASSWORD:
-            label = tkinter.Label(root, text="要关闭所有窗口，请输入密码：")
+            label = tkinter.Label(root, text="要关闭所有窗口，请输入密码，并按回车：")
             entry = tkinter.Entry(root, show="*")
         else:
             label = tkinter.Label(
                 root,
-                text="要关闭所有窗口，请输入“{}”：".format(
+                text="要关闭所有窗口，请输入“{}”，并按回车：".format(
                     self.show_text["entry_input_notice"]))
             entry = tkinter.Entry(root)
         label.pack(fill=tkinter.X)
         entry.pack(fill=tkinter.X)
         def vaild(ev=None):
             nonlocal root, entry
-            if self.valid_password(entry):
-                self.terminate_windows()
-                quit_window()
+            if not self.valid_password(entry):
+                msgbox.showerror("错误", self.show_text["input_error_notice"],
+                                 parent=root)
                 return
-            msgbox.showerror("错误", "输入错误。", parent=root)
+            if not msgbox.askyesno(
+                "询问", self.show_text["question_after_input"], parent=root):
+                return
+            self.terminate_windows()
+            quit_window()
         entry.bind("<Return>", vaild)
         def quit_window():
-            nonlocal root
+            nonlocal root, self
             root.quit()
             root.destroy()
         root.protocol("WM_DELETE_WINDOW", quit_window)
