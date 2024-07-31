@@ -67,6 +67,7 @@ class App:
             self.processes.append(process)
         root = tkinter.Tk()
         root.attributes("-topmost", True)
+        root.title("输入")
         screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
         window_width = 400
@@ -94,6 +95,9 @@ class App:
                 return
             if not msgbox.askyesno(
                 "询问", self.show_text["question_after_input"], parent=root):
+                return
+            if not msgbox.askyesno(
+                "再次询问", self.show_text["question_after_input"], parent=root):
                 return
             self.terminate_windows()
             quit_window()
