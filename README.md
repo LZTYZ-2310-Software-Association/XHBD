@@ -17,6 +17,7 @@
 1. 支持在特定时刻播放音效。（用playsound2库实现）
 2. 支持自定义窗口标题栏图标、窗口标题及窗口大小。
 3. 支持在特定时刻执行hook函数。
+4. 支持自定义弹窗显示文本、图像。
 ## 使用方法
 1. 安装Python。
 2. 执行以下命令安装playsound2库：
@@ -34,6 +35,7 @@ python -m pip install playsound2
 - entry_input_notice：程序提示用户输入内容时显示的文本。默认为“”。
 - author_info：程序显示的作者信息。默认为“”。
 - sub_window_content：程序弹窗显示的文本。默认为“程序弹窗”。
+- sub_window_image：程序弹窗显示的图像路径。默认为“”。
 - input_error_notice：用户输入错误时显示的文本。默认为“输入错误。”。
 - question_after_input：用户输入正确时显示的文本。默认为“确定？”。
 - warning_when_choose_no_after_input：用户未完成两次确认时显示的文本。默认为“未完成两次确认。”。

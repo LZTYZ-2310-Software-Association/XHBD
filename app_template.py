@@ -7,6 +7,7 @@ Do not use this program for illegal purpose, only for study purpose.
 import tkinter
 from tkinter import messagebox as msgbox
 import time
+import math
 import random
 import threading
 import multiprocessing
@@ -17,8 +18,6 @@ import re
 import traceback
 
 import playsound
-# from pydub.audio_segment import AudioSegment
-# from pydub.playback import play
 
 class EntryInputType(enum.Enum):
     PLAIN = 0
@@ -47,7 +46,8 @@ class App:
             "input_error_notice": "错误",
             "question_after_input": "询问",
             "question_after_ok_once": "再次询问",
-            "warning_when_choose_no_after_input": "警告"}
+            "warning_when_choose_no_after_input": "警告"
+        }
         self.show_text = {
             "first_confirm": "警告：你确定要运行此程序吗？",
             "ask_for_choice": "请做出你的选择。",
@@ -56,22 +56,29 @@ class App:
             "author_info": "",
             "entry_input_notice": "",
             "sub_window_content": "程序弹窗",
+            "sub_window_image": "",
             "input_error_notice": "输入错误。",
             "question_after_input": "确定？",
-            "warning_when_choose_no_after_input": "未完成两次确认。"}
-        self.sounds = dict.fromkeys(("first_confirm",
-                                     "ask_for_choice",
-                                     "warning_when_choose_no",
-                                     "notice_when_choose_yes",
-                                     "input_error_notice",
-                                     "question_after_input"), "")
-        self.hooks = dict.fromkeys(("first_confirm",
-                                    "ask_for_choice",
-                                    "warning_when_choose_no",
-                                    "notice_when_choose_yes",
-                                    "entry_input_notice",
-                                    "input_error_notice",
-                                    "question_after_input"), None)
+            "warning_when_choose_no_after_input": "未完成两次确认。"
+        }
+        self.sounds = dict.fromkeys((
+            "first_confirm",
+            "ask_for_choice",
+            "warning_when_choose_no",
+            "notice_when_choose_yes",
+            "input_error_notice",
+            "question_after_input",
+            "warning_when_choose_no_after_input"
+        ), "")
+        self.hooks = dict.fromkeys((
+            "first_confirm",
+            "ask_for_choice",
+            "warning_when_choose_no",
+            "notice_when_choose_yes",
+            "entry_input_notice",
+            "input_error_notice",
+            "question_after_input"
+            ), None)
         self.hooks_run_once_flags = dict.fromkeys(self.hooks.keys(), False)
         self.hooks_call_status = dict.fromkeys(self.hooks.keys(), False)
         self.window_icon = ""
@@ -143,7 +150,7 @@ class App:
                sys.argv[info_index + 2].startswith("pipe_handle="):
                 is_child_process = True
         if is_child_process:
-            moving_window(self.show_text["sub_window_content"])
+            self.child_process()
         else:
             self.main_process()
         
@@ -177,6 +184,13 @@ class App:
                             self.show_text["notice_when_choose_yes"])
         self.cmd_queue.put("quit")
 
+    def child_process(self):
+        moving_window(show_text=self.show_text["sub_window_content"],
+                      show_image=self.show_text["sub_window_image"],
+                      window_width=self.sub_window_width,
+                      window_height=self.sub_window_height,
+                      window_title=self.window_titles["sub_window_content"])
+
     def valid_password(self, entry_widget) -> bool:
         return True
 
@@ -184,10 +198,15 @@ class App:
         assert isinstance(total, int) and total >= 0
         for count in range(total):
             process = multiprocessing.Process(
-                target=moving_window,
-                args=(self.show_text["sub_window_content"],
-                      self.sub_window_width, self.sub_window_height,
-                      self.window_titles["sub_window_content"]))
+                target=call_with_logging_error,
+                args=(moving_window,),
+                kwargs={
+                    "show_text": self.show_text["sub_window_content"],
+                    "show_image": self.show_text["sub_window_image"],
+                    "window_width": self.sub_window_width,
+                    "window_height": self.sub_window_height,
+                    "window_title": self.window_titles["sub_window_content"]
+                })
             process.start()
             self.processes.append(process)
         root = tkinter.Tk()
@@ -234,6 +253,8 @@ class App:
             if not msgbox.askyesno(
                 self.window_titles["question_after_input"],
                 self.show_text["question_after_input"], parent=root):
+                self.cmd_queue.put("play {}".format(
+                    self.sounds["warning_when_choose_no_after_input"]))
                 msgbox.showwarning(
                     self.window_titles["warning_when_choose_no_after_input"],
                     self.show_text["warning_when_choose_no_after_input"],
@@ -246,6 +267,8 @@ class App:
                 self.window_titles["question_after_ok_once"],
                 self.show_text["question_after_input"],
                 parent=root):
+                self.cmd_queue.put("play {}".format(
+                    self.sounds["warning_when_choose_no_after_input"]))
                 msgbox.showwarning(
                     self.window_titles["warning_when_choose_no_after_input"],
                     self.show_text["warning_when_choose_no_after_input"],
@@ -283,13 +306,24 @@ class App:
             process.terminate()
         self.processes.clear()
 
+def log_print(*args, **kwargs):
+    import os
+    log_path = r"log.log"
+    mode = 'a' if os.path.exists(log_path) else 'w'
+    if "file" in kwargs:
+        del kwargs["file"]
+    with open(log_path, mode) as log:
+        print(*args, **kwargs, file=log)
+
 """This piece of code is written by ChatGLM."""
-def moving_window(show_text, window_width=None, window_height=None,
-                  window_title=None):
+def moving_window(show_text=None, show_image=None,
+                  window_width=None, window_height=None, window_title=None):
     root = tkinter.Tk()
     root.overrideredirect(True)  # 隐藏标题栏和边框
     root.attributes('-topmost', True)  # 置顶窗口
-    def convert(value, type_, default):
+    def convert(value, type_, default, use_default_if_None=True):
+        if value is None and use_default_if_None:
+            return default
         if not isinstance(value, type_):
             try:
                 res = type_(value)
@@ -298,18 +332,33 @@ def moving_window(show_text, window_width=None, window_height=None,
         else:
             res = value
         return res
+    show_text = convert(show_text, str, "")
+    show_image = convert(show_image, str, "").strip()
     window_width = convert(window_width, int, 300)
     window_height = convert(window_height, int, 100)
     window_title = convert(window_title, str, "程序弹窗").strip()
+    if show_image:
+        content_image = tkinter.PhotoImage(file=show_image)
+        image_width = content_image.width()
+        image_height = content_image.height()
+        resize_factor = min(window_width / image_width,
+                            window_height / image_height)
+        if resize_factor >= 1:
+            content_image = content_image.zoom(math.floor(resize_factor))
+        else:
+            content_image = content_image.subsample(math.ceil(
+                resize_factor ** -1))
+    else:
+        content_image = None
     if not window_title:
         window_title = "程序弹窗"
     root.geometry("{}x{}".format(window_width, window_height))  # 设置窗口大小
     if window_title:
         root.title(window_title)
 
-    label = tkinter.Label(root, text=show_text,
+    label = tkinter.Label(root, text=show_text, image=content_image,
                           font=("微软雅黑", 16), bg='white')
-    label.pack(expand=True)
+    label.pack(fill=tkinter.BOTH, expand=True)
 
     # 设置窗口初始位置
     screen_width = root.winfo_screenwidth()
@@ -336,6 +385,18 @@ def moving_window(show_text, window_width=None, window_height=None,
     root.after(50, move_window)  # 启动移动循环
     root.mainloop()
 
+def call_with_logging_error(func, *args, **kwargs):
+    try:
+        res = func(*args, **kwargs)
+    except Exception:
+        try:
+            with open(r"error.log", "w") as log:
+                traceback.print_exc(file=log)
+        except Exception:
+            traceback.print_exc()
+        res = None
+    return res
+
 def play_sound(q):
     argv_pattern = re.compile(r"(\")?(?(1)[^\"]+\"|[^\"\s]+)")
     while True:
@@ -351,7 +412,6 @@ def play_sound(q):
             if cmd_argv[0] == "play" and len(cmd_argv) > 1:
                 sound_file = cmd_argv[1].replace('"', '')
                 playsound.playsound(sound_file)
-                # play(AudioSegment.from_mp3(sound_file))
         except:
             traceback.print_exc()
         q.task_done()
