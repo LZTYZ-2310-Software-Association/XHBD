@@ -1,11 +1,12 @@
 @echo off
-rem å®šä¹‰ä¸€äº›å˜é‡
-set ICON_PATH=.\xh.ico
-set EXE_NAME=XHBD
+rem ¶¨ÒåÒ»Ð©±äÁ¿
+set ICON_PATH=.\Ð»ºã²¡¶¾.ico
+set EXE_NAME=½ñÌì¼ì²éÎïÀí×÷Òµ
 set CONSOLE_FLAG=--noconsole
 set SCRIPT_NAME=bd.pyw
+set ADD_DATA_FLAG=--add-data .\*.mp3:.
 
-rem ç¼–è¯‘ç¨‹åº
+rem ±àÒë³ÌÐò
 @echo on
-pyinstaller %CONSOLE_FLAG% -i %ICON_PATH% -n %EXE_NAME% %SCRIPT_NAME%
+pyinstaller %CONSOLE_FLAG% -i %ICON_PATH% %ADD_DATA_FLAG% -n %EXE_NAME% %SCRIPT_NAME%
 pause

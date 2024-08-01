@@ -2,9 +2,17 @@ import tkinter
 from tkinter import messagebox as msgbox
 import time
 import random
+import threading
 import multiprocessing
+import queue
 import sys
 import enum
+import re
+import traceback
+
+import playsound
+# from pydub.audio_segment import AudioSegment
+# from pydub.playback import play
 
 class EntryInputType(enum.Enum):
     PLAIN = 0
@@ -31,7 +39,17 @@ class App:
             "author_info": "",
             "sub_window_content": "程序弹窗",
             "input_error_notice": "输入错误。",
-            "question_after_input": "确定？"}
+            "question_after_input": "确定？",
+            "warning_when_choose_no_after_input": "未完成两次确认。"}
+        self.sounds = dict.fromkeys(("first_confirm",
+                                     "ask_for_choice",
+                                     "warning_when_choose_no",
+                                     "notice_when_choose_yes",
+                                     "input_error_notice",
+                                     "question_after_input"), "")
+        self.cmd_queue = queue.Queue()
+        self.playsound_thread = threading.Thread(target=play_sound,
+                                                 args=(self.cmd_queue,))
         self.entry_input_type = EntryInputType.PASSWORD
         self.entry_clear_status = EntryClearStatus.OFF
         self.window_close_action = WindowCloseAction.ALLOWED
@@ -43,6 +61,12 @@ class App:
         ensure_instance(self, "entry_input_type", EntryInputType)
         ensure_instance(self, "entry_clear_status", EntryClearStatus)
         ensure_instance(self, "window_close_action", WindowCloseAction)
+        space_pattern = re.compile(r"\s+")
+        for key, sound_file in self.sounds.items():
+            sound_file = sound_file.strip()
+            if re.search(space_pattern, sound_file):
+                sound_file = '"{}"'.format(sound_file)
+            self.sounds[key] = sound_file
         # Check whether in child process
         is_child_process = False
         if len(sys.argv) > 1 and "--multiprocessing-fork" in sys.argv:
@@ -56,16 +80,25 @@ class App:
             self.main_process()
         
     def main_process(self):
+        self.playsound_thread.start()
+        self.cmd_queue.put("play {}".format(self.sounds["first_confirm"]))
         response = msgbox.askyesno("确认", self.show_text["first_confirm"])
         if not response:
+            self.cmd_queue.put("quit")
             return
+        self.cmd_queue.put("play {}".format(self.sounds["ask_for_choice"]))
         answer = msgbox.askyesno("提问", self.show_text["ask_for_choice"])
         if not answer:
+            self.cmd_queue.put("play {}".format(
+                self.sounds["warning_when_choose_no"]))
             msgbox.showwarning("警告", self.show_text["warning_when_choose_no"])
             msgbox.showinfo("作者", self.show_text["author_info"])
             self.generate_windows()
         else:
+            self.cmd_queue.put("play {}".format(
+                self.sounds["notice_when_choose_yes"]))
             msgbox.showinfo("恭喜", self.show_text["notice_when_choose_yes"])
+        self.cmd_queue.put("quit")
 
     def valid_password(self, entry_widget) -> bool:
         return True
@@ -90,7 +123,8 @@ class App:
             (screen_height - window_height) // 2))
         root.resizable(False, False)
         if self.entry_input_type == EntryInputType.PASSWORD:
-            label = tkinter.Label(root, text="要关闭所有窗口，请输入密码，并按回车：")
+            label = tkinter.Label(
+                root, text="要关闭所有窗口，请输入密码，并按回车：")
             entry = tkinter.Entry(root, show="*")
         else:
             label = tkinter.Label(
@@ -102,19 +136,31 @@ class App:
         entry.pack(fill=tkinter.X)
         task_finished = False
         def vaild(ev=None):
-            nonlocal root, entry, task_finished
+            nonlocal root, entry, task_finished, self
             if not self.valid_password(entry):
+                self.cmd_queue.put("play {}".format(
+                    self.sounds["input_error_notice"]))
                 msgbox.showerror("错误", self.show_text["input_error_notice"],
                                  parent=root)
                 return
+            self.cmd_queue.put("play {}".format(
+                self.sounds["question_after_input"]))
             if not msgbox.askyesno(
                 "询问", self.show_text["question_after_input"], parent=root):
+                msgbox.showwarning(
+                    "警告", self.show_text["warning_when_choose_no_after_input"],
+                    parent=root)
                 return
+            self.cmd_queue.put("play {}".format(
+                self.sounds["question_after_input"]))
             if not msgbox.askyesno(
                 "再次询问", self.show_text["question_after_input"],
                 parent=root):
+                msgbox.showwarning(
+                    "警告", self.show_text["warning_when_choose_no_after_input"],
+                    parent=root)
                 if self.entry_clear_status == EntryClearStatus.ON:
-                    entry.delete('0')
+                    entry.delete('0', tkinter.END)
                 return
             self.terminate_windows()
             task_finished = True
@@ -126,13 +172,15 @@ class App:
                 if self.window_close_action == WindowCloseAction.DENIED:
                     msgbox.showwarning("警告", "此窗口无法关闭。", parent=root)
                     return
-                elif self.window_close_action == WindowCloseAction.ASK_BEFORE_CLOSE:
+                elif self.window_close_action == \
+                     WindowCloseAction.ASK_BEFORE_CLOSE:
                     if not msgbox.askyesno(
                         "提示", "关闭此窗口将导致无法关闭弹窗。是否继续？",
                         parent=root):
                         return
             root.quit()
             root.destroy()
+            self.cmd_queue.put("quit")
         root.protocol("WM_DELETE_WINDOW", quit_window)
         root.mainloop()
 
@@ -142,7 +190,6 @@ class App:
         self.processes.clear()
 
 def moving_window(show_text):
-    # print("Sub window created.")
     root = tkinter.Tk()
     root.overrideredirect(True)  # 隐藏标题栏和边框
     root.attributes('-topmost', True)  # 置顶窗口
@@ -177,6 +224,25 @@ def moving_window(show_text):
     root.after(50, move_window)  # 启动移动循环
     root.mainloop()
 
+def play_sound(q):
+    argv_pattern = re.compile(r"(\")?(?(1)[^\"]+\"|[^\"\s]+)")
+    while True:
+        cmd = q.get().strip()
+        if not cmd:
+            q.task_done()
+            continue
+        cmd_argv = [match.group() for match in re.finditer(argv_pattern, cmd)]
+        if cmd_argv[0] in ("quit", "exit"):
+            q.task_done()
+            break
+        try:
+            if cmd_argv[0] == "play" and len(cmd_argv) > 1:
+                sound_file = cmd_argv[1].replace('"', '')
+                playsound.playsound(sound_file)
+                # play(AudioSegment.from_mp3(sound_file))
+        except:
+            traceback.print_exc()
+        q.task_done()
+
 if __name__ == "__main__":
-    # print(sys.argv)
     App().run()
