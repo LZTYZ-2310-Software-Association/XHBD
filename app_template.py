@@ -65,6 +65,15 @@ class App:
                                      "notice_when_choose_yes",
                                      "input_error_notice",
                                      "question_after_input"), "")
+        self.hooks = dict.fromkeys(("first_confirm",
+                                    "ask_for_choice",
+                                    "warning_when_choose_no",
+                                    "notice_when_choose_yes",
+                                    "entry_input_notice",
+                                    "input_error_notice",
+                                    "question_after_input"), None)
+        self.hooks_run_once_flags = dict.fromkeys(self.hooks.keys(), False)
+        self.hooks_call_status = dict.fromkeys(self.hooks.keys(), False)
         self.window_icon = ""
         self.cmd_queue = queue.Queue()
         self.playsound_thread = threading.Thread(target=play_sound,
@@ -72,6 +81,7 @@ class App:
         self.entry_input_type = EntryInputType.PASSWORD
         self.entry_clear_status = EntryClearStatus.OFF
         self.window_close_action = WindowCloseAction.ALLOWED
+        self.sub_window_total = 5
         self.main_window_width = 400
         self.main_window_height = 100
         self.sub_window_width = 300
@@ -81,6 +91,22 @@ class App:
     def custom_init(self):
         """Customize your app here."""
         pass
+
+    def call_hook(self, hook_name: str):
+        if hook_name not in self.hooks:
+            return
+        run_once = self.hooks_run_once_flags[hook_name]
+        status = self.hooks_call_status[hook_name]
+        if run_once and status:
+            return
+        hook = self.hooks[hook_name]
+        if not callable(hook):
+            return
+        try:
+            hook()
+        except Exception:
+            traceback.print_exc()
+        self.hooks_call_status[hook_name] = True
 
     def run(self):
         # Check attributes whether their types are correct.
@@ -95,10 +121,14 @@ class App:
             self.window_icon = self.window_icon.strip()
         else:
             self.window_icon = ""
+        def ensure_dict_all_values(dict_, type_):
+            for key, value in dict_.items():
+                if not isinstance(value, type_):
+                    dict_[key] = type_(value)
         for info_dict in (self.window_titles, self.show_text, self.sounds):
-            for key, value in info_dict.items():
-                if not isinstance(value, str):
-                    info_dict[key] = str(value)
+            ensure_dict_all_values(info_dict, str)
+        for info_dict in (self.hooks_run_once_flags, self.hooks_call_status):
+            ensure_dict_all_values(info_dict, bool)
         space_pattern = re.compile(r"\s+")
         for key, sound_file in self.sounds.items():
             sound_file = sound_file.strip()
@@ -119,24 +149,28 @@ class App:
         
     def main_process(self):
         self.playsound_thread.start()
+        self.call_hook("first_confirm")
         self.cmd_queue.put("play {}".format(self.sounds["first_confirm"]))
         response = msgbox.askyesno(self.window_titles["first_confirm"],
                                    self.show_text["first_confirm"])
         if not response:
             self.cmd_queue.put("quit")
             return
+        self.call_hook("ask_for_choice")
         self.cmd_queue.put("play {}".format(self.sounds["ask_for_choice"]))
         answer = msgbox.askyesno(self.window_titles["ask_for_choice"],
                                  self.show_text["ask_for_choice"])
         if not answer:
+            self.call_hook("warning_when_choose_no")
             self.cmd_queue.put("play {}".format(
                 self.sounds["warning_when_choose_no"]))
             msgbox.showwarning(self.window_titles["warning_when_choose_no"],
                                self.show_text["warning_when_choose_no"])
             msgbox.showinfo(self.window_titles["author_info"],
                             self.show_text["author_info"])
-            self.generate_windows()
+            self.generate_windows(self.sub_window_total)
         else:
+            self.call_hook("notice_when_choose_yes")
             self.cmd_queue.put("play {}".format(
                 self.sounds["notice_when_choose_yes"]))
             msgbox.showinfo(self.window_titles["notice_when_choose_yes"],
@@ -147,6 +181,7 @@ class App:
         return True
 
     def generate_windows(self, total=5):
+        assert isinstance(total, int) and total >= 0
         for count in range(total):
             process = multiprocessing.Process(
                 target=moving_window,
@@ -186,12 +221,14 @@ class App:
         def valid(ev=None):
             nonlocal root, entry, task_finished, self
             if not self.valid_password(entry):
+                self.call_hook("input_error_notice")
                 self.cmd_queue.put("play {}".format(
                     self.sounds["input_error_notice"]))
                 msgbox.showerror(self.window_titles["input_error_notice"],
                                  self.show_text["input_error_notice"],
                                  parent=root)
                 return
+            self.call_hook("question_after_input")
             self.cmd_queue.put("play {}".format(
                 self.sounds["question_after_input"]))
             if not msgbox.askyesno(
@@ -202,6 +239,7 @@ class App:
                     self.show_text["warning_when_choose_no_after_input"],
                     parent=root)
                 return
+            self.call_hook("question_after_input")
             self.cmd_queue.put("play {}".format(
                 self.sounds["question_after_input"]))
             if not msgbox.askyesno(
@@ -237,7 +275,7 @@ class App:
             root.destroy()
             self.cmd_queue.put("quit")
         root.protocol("WM_DELETE_WINDOW", quit_window)
-        root.update()
+        self.call_hook("entry_input_notice")
         root.mainloop()
 
     def terminate_windows(self):

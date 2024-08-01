@@ -13,9 +13,10 @@
   - 若用户第一次选择“否”，则弹窗和输入窗口保留。
   - 若用户第一次选择“是”，第二次选择“否”，保留弹窗和输入框，并根据程序配置信息决定是否清空输入框中内容。
 - 若用户关闭输入窗口，则弹窗保留。
-## 新特性
+## 特性
 1. 支持在特定时刻播放音效。（用playsound2库实现）
 2. 支持自定义窗口标题栏图标、窗口标题及窗口大小。
+3. 支持在特定时刻执行hook函数。
 ## 使用方法
 1. 安装Python。
 2. 执行以下命令安装playsound2库：
@@ -69,6 +70,14 @@ python -m pip install playsound2
 8. 弹窗窗口大小。
 - self.sub_window_width：弹窗窗口宽度。类型为int（正整数），默认值为300。
 - self.sub_window_height：弹窗窗口高度。类型为int（正整数），默认值为100。
+9. self.hooks：特定时刻执行的hook函数。类型为dict，每个值为无参数的函数或None，默认值均为None，包含以下几个键：
+- first_confirm：程序开始运行询问是否继续运行时执行的hook函数。
+- ask_for_choice：程序第一次询问“是”或“否”时执行的hook函数。
+- warning_when_choose_no：用户选择“否”时执行的hook函数。
+- notice_when_choose_yes：用户选择“是”时执行的hook函数。
+- entry_input_notice：程序提示用户输入内容时执行的hook函数。
+- input_error_notice：用户输入错误时执行的hook函数。
+- question_after_input：用户输入正确时执行的hook函数。
 ## 更多使用方法
 ### 将脚本打包成exe文件
 1. 先执行如下命令安装pyinstaller：

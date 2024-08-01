@@ -5,6 +5,7 @@ Audio source: LGC from Class 2310
 Do not use this program for illegal purpose, only for study purpose.
 """
 import os
+import subprocess
 
 from app_template import App, EntryInputType, EntryClearStatus, WindowCloseAction
 
@@ -35,9 +36,19 @@ class CustomApp(App):
         self.entry_clear_status = EntryClearStatus.ON
         self.window_close_action = WindowCloseAction.ASK_BEFORE_CLOSE
         self.window_icon = os.path.join(app_path, "谢恒病毒.ico")
+        # self.sub_window_total = 20
+        # self.hooks["warning_when_choose_no"] = lambda: print("颠佬！你敢不写完物理作业？！")
+        self.hooks["entry_input_notice"] = CustomApp.test_hook
 
     def valid_password(self, entry_widget) -> bool:
         return entry_widget.get() == "我保证以后一定按时完成物理作业"
+
+    @staticmethod
+    def test_hook():
+        print("颠佬！你敢不写完物理作业？！")
+        # os.system(r"start C:\Windows\System32\slidetoshutdown")
+        # subprocess.Popen("slidetoshutdown")
+        # subprocess.Popen(r"pyw D:\Tools\reminder\reminder.pyw")
 
 if __name__ == "__main__":
     CustomApp().run()
