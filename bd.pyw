@@ -41,7 +41,7 @@ class CustomApp(App):
         # self.sub_window_width = 600
         self.sub_window_height = 250
         # self.hooks["warning_when_choose_no"] = lambda: print("颠佬！你敢不写完物理作业？！")
-        # self.hooks["entry_input_notice"] = CustomApp.test_hook
+        self.hooks["entry_input_notice"] = CustomApp.test_hook
 
     def valid_password(self, entry_widget) -> bool:
         return entry_widget.get() == "我保证以后一定按时完成物理作业"
@@ -49,9 +49,6 @@ class CustomApp(App):
     @staticmethod
     def test_hook():
         print("颠佬！你敢不写完物理作业？！")
-        # os.system(r"start C:\Windows\System32\slidetoshutdown")
-        # subprocess.Popen("slidetoshutdown")
-        # subprocess.Popen(r"pyw D:\Tools\reminder\reminder.pyw")
 
 if __name__ == "__main__":
     CustomApp().run()
