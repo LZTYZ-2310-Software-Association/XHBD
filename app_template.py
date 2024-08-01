@@ -36,13 +36,25 @@ class WindowCloseAction(enum.Enum):
 class App:
     def __init__(self):
         self.processes = []
+        self.window_titles = {
+            "first_confirm": "确认",
+            "ask_for_choice": "提问",
+            "warning_when_choose_no": "警告",
+            "notice_when_choose_yes": "恭喜",
+            "author_info": "作者",
+            "entry_input_notice": "输入",
+            "sub_window_content": "程序弹窗",
+            "input_error_notice": "错误",
+            "question_after_input": "询问",
+            "question_after_ok_once": "再次询问",
+            "warning_when_choose_no_after_input": "警告"}
         self.show_text = {
             "first_confirm": "警告：你确定要运行此程序吗？",
             "ask_for_choice": "请做出你的选择。",
             "warning_when_choose_no": "程序已启动。",
             "notice_when_choose_yes": "程序未能启动。",
-            "entry_input_notice": "",
             "author_info": "",
+            "entry_input_notice": "",
             "sub_window_content": "程序弹窗",
             "input_error_notice": "输入错误。",
             "question_after_input": "确定？",
@@ -83,6 +95,10 @@ class App:
             self.window_icon = self.window_icon.strip()
         else:
             self.window_icon = ""
+        for info_dict in (self.window_titles, self.show_text, self.sounds):
+            for key, value in info_dict.items():
+                if not isinstance(value, str):
+                    info_dict[key] = str(value)
         space_pattern = re.compile(r"\s+")
         for key, sound_file in self.sounds.items():
             sound_file = sound_file.strip()
@@ -104,22 +120,27 @@ class App:
     def main_process(self):
         self.playsound_thread.start()
         self.cmd_queue.put("play {}".format(self.sounds["first_confirm"]))
-        response = msgbox.askyesno("确认", self.show_text["first_confirm"])
+        response = msgbox.askyesno(self.window_titles["first_confirm"],
+                                   self.show_text["first_confirm"])
         if not response:
             self.cmd_queue.put("quit")
             return
         self.cmd_queue.put("play {}".format(self.sounds["ask_for_choice"]))
-        answer = msgbox.askyesno("提问", self.show_text["ask_for_choice"])
+        answer = msgbox.askyesno(self.window_titles["ask_for_choice"],
+                                 self.show_text["ask_for_choice"])
         if not answer:
             self.cmd_queue.put("play {}".format(
                 self.sounds["warning_when_choose_no"]))
-            msgbox.showwarning("警告", self.show_text["warning_when_choose_no"])
-            msgbox.showinfo("作者", self.show_text["author_info"])
+            msgbox.showwarning(self.window_titles["warning_when_choose_no"],
+                               self.show_text["warning_when_choose_no"])
+            msgbox.showinfo(self.window_titles["author_info"],
+                            self.show_text["author_info"])
             self.generate_windows()
         else:
             self.cmd_queue.put("play {}".format(
                 self.sounds["notice_when_choose_yes"]))
-            msgbox.showinfo("恭喜", self.show_text["notice_when_choose_yes"])
+            msgbox.showinfo(self.window_titles["notice_when_choose_yes"],
+                            self.show_text["notice_when_choose_yes"])
         self.cmd_queue.put("quit")
 
     def valid_password(self, entry_widget) -> bool:
@@ -130,11 +151,12 @@ class App:
             process = multiprocessing.Process(
                 target=moving_window,
                 args=(self.show_text["sub_window_content"],
-                      self.sub_window_width, self.sub_window_height))
+                      self.sub_window_width, self.sub_window_height,
+                      self.window_titles["sub_window_content"]))
             process.start()
             self.processes.append(process)
         root = tkinter.Tk()
-        root.title("输入")
+        root.title(self.window_titles["entry_input_notice"])
         root.attributes("-topmost", True)
         if self.window_icon:
             root.iconbitmap(self.window_icon)
@@ -166,24 +188,29 @@ class App:
             if not self.valid_password(entry):
                 self.cmd_queue.put("play {}".format(
                     self.sounds["input_error_notice"]))
-                msgbox.showerror("错误", self.show_text["input_error_notice"],
+                msgbox.showerror(self.window_titles["input_error_notice"],
+                                 self.show_text["input_error_notice"],
                                  parent=root)
                 return
             self.cmd_queue.put("play {}".format(
                 self.sounds["question_after_input"]))
             if not msgbox.askyesno(
-                "询问", self.show_text["question_after_input"], parent=root):
+                self.window_titles["question_after_input"],
+                self.show_text["question_after_input"], parent=root):
                 msgbox.showwarning(
-                    "警告", self.show_text["warning_when_choose_no_after_input"],
+                    self.window_titles["warning_when_choose_no_after_input"],
+                    self.show_text["warning_when_choose_no_after_input"],
                     parent=root)
                 return
             self.cmd_queue.put("play {}".format(
                 self.sounds["question_after_input"]))
             if not msgbox.askyesno(
-                "再次询问", self.show_text["question_after_input"],
+                self.window_titles["question_after_ok_once"],
+                self.show_text["question_after_input"],
                 parent=root):
                 msgbox.showwarning(
-                    "警告", self.show_text["warning_when_choose_no_after_input"],
+                    self.window_titles["warning_when_choose_no_after_input"],
+                    self.show_text["warning_when_choose_no_after_input"],
                     parent=root)
                 if self.entry_clear_status == EntryClearStatus.ON:
                     entry.delete('0', tkinter.END)
@@ -219,7 +246,8 @@ class App:
         self.processes.clear()
 
 """This piece of code is written by ChatGLM."""
-def moving_window(show_text, window_width=None, window_height=None):
+def moving_window(show_text, window_width=None, window_height=None,
+                  window_title=None):
     root = tkinter.Tk()
     root.overrideredirect(True)  # 隐藏标题栏和边框
     root.attributes('-topmost', True)  # 置顶窗口
@@ -234,7 +262,12 @@ def moving_window(show_text, window_width=None, window_height=None):
         return res
     window_width = convert(window_width, int, 300)
     window_height = convert(window_height, int, 100)
+    window_title = convert(window_title, str, "程序弹窗").strip()
+    if not window_title:
+        window_title = "程序弹窗"
     root.geometry("{}x{}".format(window_width, window_height))  # 设置窗口大小
+    if window_title:
+        root.title(window_title)
 
     label = tkinter.Label(root, text=show_text,
                           font=("微软雅黑", 16), bg='white')

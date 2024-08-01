@@ -10,10 +10,11 @@ from app_template import App, EntryInputType, EntryClearStatus, WindowCloseActio
 
 class CustomApp(App):
     def custom_init(self):
+        self.window_titles["notice_when_choose_yes"]  = "质疑"
         self.show_text["first_confirm"] = "恒少：喂喂喂，今天检查物理作业，怎么样？"
         self.show_text["ask_for_choice"] = "恒少：写完物理作业了吗？要老实回答，听到我说了没有？"
         self.show_text["warning_when_choose_no"] = "恒少：有B吧，竟然不写物理作业？"
-        self.show_text["notice_when_choose_yes"] = "恒少：这么快？抄的吧？要认真写，不要装模做样，听到了吧？！"
+        self.show_text["notice_when_choose_yes"] = "恒少：这么快？抄答案是不是？要认真写，不要装模做样，听到了吧？！"
         self.show_text["entry_input_notice"] = "我保证以后一定按时完成物理作业"
         self.show_text["sub_window_content"] = "不写物理作业，\n滚出去！！！"
         self.show_text["author_info"] = "未知作者创意设计"
@@ -26,7 +27,8 @@ class CustomApp(App):
         # self.sounds["ask_for_choice"] = os.path.join(app_path, "听到没有.mp3")
         self.sounds["ask_for_choice"] = os.path.join(app_path, "听到我说了没有.mp3")
         self.sounds["warning_when_choose_no"] = os.path.join(app_path, "有病吧.mp3")
-        self.sounds["notice_when_choose_yes"] = os.path.join(app_path, "询问已写.mp3")
+        # self.sounds["notice_when_choose_yes"] = os.path.join(app_path, "询问已写.mp3")
+        self.sounds["notice_when_choose_yes"] = os.path.join(app_path, "抄答案+是不是+询问已写.mp3")
         self.sounds["question_after_input"] = os.path.join(app_path, "落实好.mp3")
         self.sounds["input_error_notice"] = os.path.join(app_path, "是不是.mp3")
         self.entry_input_type = EntryInputType.PLAIN
