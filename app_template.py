@@ -5,13 +5,19 @@ import random
 import multiprocessing
 import sys
 import enum
-import os,random
-import random,sys
-import time
 
 class EntryInputType(enum.Enum):
     PLAIN = 0
     PASSWORD = 1
+
+class EntryClearStatus(enum.Enum):
+    OFF = 0
+    ON = 1
+
+class WindowCloseAction(enum.Enum):
+    ALLOWED = 0
+    ASK_BEFORE_CLOSE = 1
+    DENIED = 2
 
 class App:
     def __init__(self):
@@ -27,10 +33,16 @@ class App:
             "input_error_notice": "输入错误。",
             "question_after_input": "确定？"}
         self.entry_input_type = EntryInputType.PASSWORD
+        self.entry_clear_status = EntryClearStatus.OFF
+        self.window_close_action = WindowCloseAction.ALLOWED
 
     def run(self):
-        if not isinstance(self.entry_input_type, EntryInputType):
-            self.entry_input_type = EntryInputType(self.entry_input_type)
+        def ensure_instance(self, attr, type_):
+            if not isinstance(getattr(self, attr), type_):
+                setattr(self, attr, type_(self.entry_input_type))
+        ensure_instance(self, "entry_input_type", EntryInputType)
+        ensure_instance(self, "entry_clear_status", EntryClearStatus)
+        ensure_instance(self, "window_close_action", WindowCloseAction)
         # Check whether in child process
         is_child_process = False
         if len(sys.argv) > 1 and "--multiprocessing-fork" in sys.argv:
@@ -66,8 +78,8 @@ class App:
             process.start()
             self.processes.append(process)
         root = tkinter.Tk()
-        root.attributes("-topmost", True)
         root.title("输入")
+        root.attributes("-topmost", True)
         screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
         window_width = 400
@@ -76,6 +88,7 @@ class App:
             window_width, window_height,
             (screen_width - window_width) // 2,
             (screen_height - window_height) // 2))
+        root.resizable(False, False)
         if self.entry_input_type == EntryInputType.PASSWORD:
             label = tkinter.Label(root, text="要关闭所有窗口，请输入密码，并按回车：")
             entry = tkinter.Entry(root, show="*")
@@ -87,8 +100,9 @@ class App:
             entry = tkinter.Entry(root)
         label.pack(fill=tkinter.X)
         entry.pack(fill=tkinter.X)
+        task_finished = False
         def vaild(ev=None):
-            nonlocal root, entry
+            nonlocal root, entry, task_finished
             if not self.valid_password(entry):
                 msgbox.showerror("错误", self.show_text["input_error_notice"],
                                  parent=root)
@@ -97,13 +111,26 @@ class App:
                 "询问", self.show_text["question_after_input"], parent=root):
                 return
             if not msgbox.askyesno(
-                "再次询问", self.show_text["question_after_input"], parent=root):
+                "再次询问", self.show_text["question_after_input"],
+                parent=root):
+                if self.entry_clear_status == EntryClearStatus.ON:
+                    entry.delete('0')
                 return
             self.terminate_windows()
+            task_finished = True
             quit_window()
         entry.bind("<Return>", vaild)
         def quit_window():
-            nonlocal root, self
+            nonlocal root, self, task_finished
+            if not task_finished:
+                if self.window_close_action == WindowCloseAction.DENIED:
+                    msgbox.showwarning("警告", "此窗口无法关闭。", parent=root)
+                    return
+                elif self.window_close_action == WindowCloseAction.ASK_BEFORE_CLOSE:
+                    if not msgbox.askyesno(
+                        "提示", "关闭此窗口将导致无法关闭弹窗。是否继续？",
+                        parent=root):
+                        return
             root.quit()
             root.destroy()
         root.protocol("WM_DELETE_WINDOW", quit_window)
