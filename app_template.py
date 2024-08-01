@@ -1,3 +1,9 @@
+"""
+Author: WZJ and QGD from Class 2310, assisted by ChatGLM.
+Audio source: LGC from Class 2310
+
+Do not use this program for illegal purpose, only for study purpose.
+"""
 import tkinter
 from tkinter import messagebox as msgbox
 import time
@@ -47,20 +53,36 @@ class App:
                                      "notice_when_choose_yes",
                                      "input_error_notice",
                                      "question_after_input"), "")
+        self.window_icon = ""
         self.cmd_queue = queue.Queue()
         self.playsound_thread = threading.Thread(target=play_sound,
                                                  args=(self.cmd_queue,))
         self.entry_input_type = EntryInputType.PASSWORD
         self.entry_clear_status = EntryClearStatus.OFF
         self.window_close_action = WindowCloseAction.ALLOWED
+        self.main_window_width = 400
+        self.main_window_height = 100
+        self.sub_window_width = 300
+        self.sub_window_height = 100
+        self.custom_init()
+
+    def custom_init(self):
+        """Customize your app here."""
+        pass
 
     def run(self):
+        # Check attributes whether their types are correct.
         def ensure_instance(self, attr, type_):
             if not isinstance(getattr(self, attr), type_):
                 setattr(self, attr, type_(self.entry_input_type))
         ensure_instance(self, "entry_input_type", EntryInputType)
         ensure_instance(self, "entry_clear_status", EntryClearStatus)
         ensure_instance(self, "window_close_action", WindowCloseAction)
+        if self.window_icon is not None:
+            ensure_instance(self, "window_icon", str)
+            self.window_icon = self.window_icon.strip()
+        else:
+            self.window_icon = ""
         space_pattern = re.compile(r"\s+")
         for key, sound_file in self.sounds.items():
             sound_file = sound_file.strip()
@@ -107,16 +129,20 @@ class App:
         for count in range(total):
             process = multiprocessing.Process(
                 target=moving_window,
-                args=(self.show_text["sub_window_content"],))
+                args=(self.show_text["sub_window_content"],
+                      self.sub_window_width, self.sub_window_height))
             process.start()
             self.processes.append(process)
         root = tkinter.Tk()
         root.title("输入")
         root.attributes("-topmost", True)
+        if self.window_icon:
+            root.iconbitmap(self.window_icon)
+            root.iconbitmap(default=self.window_icon)
         screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
-        window_width = 400
-        window_height = 100
+        window_width = self.main_window_width
+        window_height = self.main_window_height
         root.geometry("{}x{}+{}+{}".format(
             window_width, window_height,
             (screen_width - window_width) // 2,
@@ -135,7 +161,7 @@ class App:
         label.pack(fill=tkinter.X)
         entry.pack(fill=tkinter.X)
         task_finished = False
-        def vaild(ev=None):
+        def valid(ev=None):
             nonlocal root, entry, task_finished, self
             if not self.valid_password(entry):
                 self.cmd_queue.put("play {}".format(
@@ -165,7 +191,7 @@ class App:
             self.terminate_windows()
             task_finished = True
             quit_window()
-        entry.bind("<Return>", vaild)
+        entry.bind("<Return>", valid)
         def quit_window():
             nonlocal root, self, task_finished
             if not task_finished:
@@ -178,10 +204,13 @@ class App:
                         "提示", "关闭此窗口将导致无法关闭弹窗。是否继续？",
                         parent=root):
                         return
+                else:
+                    return
             root.quit()
             root.destroy()
             self.cmd_queue.put("quit")
         root.protocol("WM_DELETE_WINDOW", quit_window)
+        root.update()
         root.mainloop()
 
     def terminate_windows(self):
@@ -189,14 +218,26 @@ class App:
             process.terminate()
         self.processes.clear()
 
-def moving_window(show_text):
+"""This piece of code is written by ChatGLM."""
+def moving_window(show_text, window_width=None, window_height=None):
     root = tkinter.Tk()
     root.overrideredirect(True)  # 隐藏标题栏和边框
     root.attributes('-topmost', True)  # 置顶窗口
-    root.geometry("300x100")  # 增加窗口大小
+    def convert(value, type_, default):
+        if not isinstance(value, type_):
+            try:
+                res = type_(value)
+            except Exception:
+                res = default
+        else:
+            res = value
+        return res
+    window_width = convert(window_width, int, 300)
+    window_height = convert(window_height, int, 100)
+    root.geometry("{}x{}".format(window_width, window_height))  # 设置窗口大小
 
     label = tkinter.Label(root, text=show_text,
-                          font=("Arial", 16), bg='white')
+                          font=("微软雅黑", 16), bg='white')
     label.pack(expand=True)
 
     # 设置窗口初始位置

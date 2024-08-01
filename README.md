@@ -14,7 +14,8 @@
   - 若用户第一次选择“是”，第二次选择“否”，保留弹窗和输入框，并根据程序配置信息决定是否清空输入框中内容。
 - 若用户关闭输入窗口，则弹窗保留。
 ## 新特性
-支持在特定时刻播放音效。（用playsound2库实现）
+1. 支持在特定时刻播放音效。（用playsound2库实现）
+2. 支持自定义窗口标题栏图标及窗口大小。
 ## 使用方法
 1. 安装Python。
 2. 执行以下命令安装playsound2库：
@@ -48,6 +49,13 @@ python -m pip install playsound2
 - notice_when_choose_yes：用户选择“是”时播放的音效文件路径。
 - input_error_notice：用户输入错误时播放的音效文件路径。
 - question_after_input：用户输入正确时播放的音效文件路径。
+5. self.window_icon：窗口标题栏图标文件路径（仅支持ICO文件）。类型为str，默认值为“”。
+6. 输入窗口大小。
+- self.window_width：输入窗口宽度。类型为int（正整数），默认值为400。
+- self.window_height：输入窗口高度。类型为int（正整数），默认值为100。
+7. 弹窗窗口大小。
+- self.sub_window_width：弹窗窗口宽度。类型为int（正整数），默认值为300。
+- self.sub_window_height：弹窗窗口高度。类型为int（正整数），默认值为100。
 ## 更多使用方法
 ### 将脚本打包成exe文件
 1. 先执行如下命令安装pyinstaller：

@@ -4,7 +4,7 @@ set ICON_PATH=.\xh.ico
 set EXE_NAME=XHBD
 set CONSOLE_FLAG=--noconsole
 set SCRIPT_NAME=bd.pyw
-set ADD_DATA_FLAG=--add-data .\*.mp3:.
+set ADD_DATA_FLAG=--add-data .\*.mp3:. --add-data .\xh.ico:.
 
 rem 编译程序
 @echo on
