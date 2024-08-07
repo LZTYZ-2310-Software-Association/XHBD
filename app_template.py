@@ -154,8 +154,10 @@ class App:
         is_child_process = False
         if len(sys.argv) > 1 and "--multiprocessing-fork" in sys.argv:
             info_index = sys.argv.index("--multiprocessing-fork")
-            if sys.argv[info_index + 1].startswith("parent_pid=") and \
-               sys.argv[info_index + 2].startswith("pipe_handle="):
+            if ((sys.argv[info_index + 1].startswith("parent_pid=") and \
+                 sys.argv[info_index + 2].startswith("pipe_handle=")) or \
+                (sys.argv[info_index + 2].startswith("parent_pid=") and \
+                 sys.argv[info_index + 1].startswith("pipe_handle="))):
                 is_child_process = True
         if is_child_process:
             self.child_process()
@@ -163,33 +165,46 @@ class App:
             self.main_process()
         
     def main_process(self):
+        default_root_window = tkinter.Tk()
+        default_root_window.withdraw()
+        if self.window_icon:
+            default_root_window.iconbitmap(self.window_icon)
+            default_root_window.iconbitmap(default=self.window_icon)
         self.playsound_thread.start()
         self.call_hook("first_confirm")
         self.cmd_queue.put("play {}".format(self.sounds["first_confirm"]))
         response = msgbox.askyesno(self.window_titles["first_confirm"],
-                                   self.show_text["first_confirm"])
+                                   self.show_text["first_confirm"],
+                                   parent=default_root_window)
         if not response:
             self.cmd_queue.put("quit")
+            default_root_window.destroy()
             return
         self.call_hook("ask_for_choice")
         self.cmd_queue.put("play {}".format(self.sounds["ask_for_choice"]))
         answer = msgbox.askyesno(self.window_titles["ask_for_choice"],
-                                 self.show_text["ask_for_choice"])
+                                 self.show_text["ask_for_choice"],
+                                 parent=default_root_window)
         if not answer:
             self.call_hook("warning_when_choose_no")
             self.cmd_queue.put("play {}".format(
                 self.sounds["warning_when_choose_no"]))
             msgbox.showwarning(self.window_titles["warning_when_choose_no"],
-                               self.show_text["warning_when_choose_no"])
+                               self.show_text["warning_when_choose_no"],
+                               parent=default_root_window)
             msgbox.showinfo(self.window_titles["author_info"],
-                            self.show_text["author_info"])
+                            self.show_text["author_info"],
+                            parent=default_root_window)
+            default_root_window.destroy()
             self.generate_windows(self.sub_window_total)
         else:
             self.call_hook("notice_when_choose_yes")
             self.cmd_queue.put("play {}".format(
                 self.sounds["notice_when_choose_yes"]))
             msgbox.showinfo(self.window_titles["notice_when_choose_yes"],
-                            self.show_text["notice_when_choose_yes"])
+                            self.show_text["notice_when_choose_yes"],
+                            parent=default_root_window)
+            default_root_window.destroy()
         self.cmd_queue.put("quit")
 
     def child_process(self):
@@ -335,7 +350,7 @@ def log_print(*args, **kwargs):
     if "file" in kwargs:
         del kwargs["file"]
     with open(log_path, mode) as log:
-        print(*args, **kwargs, file=log)
+        print(*args, file=log, **kwargs)
 
 """This piece of code is written by ChatGLM."""
 def moving_window(show_text=None, show_image=None,
@@ -372,13 +387,14 @@ def moving_window(show_text=None, show_image=None,
                 resize_factor ** -1))
     else:
         content_image = None
-    if not window_title:
+    if not window_title and content_image is None:
         window_title = "程序弹窗"
     root.geometry("{}x{}".format(window_width, window_height))  # 设置窗口大小
     if window_title:
         root.title(window_title)
 
     label = tkinter.Label(root, text=show_text, image=content_image,
+                          compound=tkinter.CENTER,
                           font=("微软雅黑", 16), bg='white')
     label.pack(fill=tkinter.BOTH, expand=True)
 
@@ -387,7 +403,7 @@ def moving_window(show_text=None, show_image=None,
     screen_height = root.winfo_screenheight()
     x = random.randint(0, screen_width - root.winfo_width())
     y = random.randint(0, screen_height - root.winfo_height())
-    root.geometry(f"+{x}+{y}")
+    root.geometry("+{x}+{y}".format(x=x, y=y))
 
     def move_window():
         nonlocal x, y
@@ -401,7 +417,7 @@ def moving_window(show_text=None, show_image=None,
             y = 0
         elif y > screen_height - root.winfo_height():
             y = screen_height - root.winfo_height()
-        root.geometry(f"+{x}+{y}")
+        root.geometry("+{x}+{y}".format(x=x, y=y))
         root.after(50, move_window)  # 每50毫秒移动一次
 
     root.after(50, move_window)  # 启动移动循环
