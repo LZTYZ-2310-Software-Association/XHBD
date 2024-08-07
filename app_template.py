@@ -46,7 +46,8 @@ class App:
             "input_error_notice": "错误",
             "question_after_input": "询问",
             "question_after_ok_once": "再次询问",
-            "warning_when_choose_no_after_input": "警告"
+            "warning_when_choose_no_after_input": "警告",
+            "notice_after_sub_windows_destroyed": "提示"
         }
         self.show_text = {
             "first_confirm": "警告：你确定要运行此程序吗？",
@@ -59,8 +60,11 @@ class App:
             "sub_window_image": "",
             "input_error_notice": "输入错误。",
             "question_after_input": "确定？",
-            "warning_when_choose_no_after_input": "未完成两次确认。"
+            "warning_when_choose_no_after_input": "未完成两次确认。",
+            "notice_after_sub_windows_destroyed": "程序已结束。"
         }
+        self.use_entry_input_notice_template = True
+        self.show_notice_after_sub_windows_destroyed = False
         self.sounds = dict.fromkeys((
             "first_confirm",
             "ask_for_choice",
@@ -68,7 +72,8 @@ class App:
             "notice_when_choose_yes",
             "input_error_notice",
             "question_after_input",
-            "warning_when_choose_no_after_input"
+            "warning_when_choose_no_after_input",
+            "notice_after_sub_windows_destroyed"
         ), "")
         self.hooks = dict.fromkeys((
             "first_confirm",
@@ -77,14 +82,15 @@ class App:
             "notice_when_choose_yes",
             "entry_input_notice",
             "input_error_notice",
-            "question_after_input"
+            "question_after_input",
+            "notice_after_sub_windows_destroyed"
             ), None)
         self.hooks_run_once_flags = dict.fromkeys(self.hooks.keys(), False)
         self.hooks_call_status = dict.fromkeys(self.hooks.keys(), False)
         self.window_icon = ""
         self.cmd_queue = queue.Queue()
-        self.playsound_thread = threading.Thread(target=play_sound,
-                                                 args=(self.cmd_queue,))
+        self.playsound_thread = threading.Thread(
+            target=play_sound, args=(self.cmd_queue,))
         self.entry_input_type = EntryInputType.PASSWORD
         self.entry_clear_status = EntryClearStatus.OFF
         self.window_close_action = WindowCloseAction.ALLOWED
@@ -123,6 +129,8 @@ class App:
         ensure_instance(self, "entry_input_type", EntryInputType)
         ensure_instance(self, "entry_clear_status", EntryClearStatus)
         ensure_instance(self, "window_close_action", WindowCloseAction)
+        ensure_instance(self, "use_entry_input_notice_template", bool)
+        ensure_instance(self, "show_notice_after_sub_windows_destroyed", bool)
         if self.window_icon is not None:
             ensure_instance(self, "window_icon", str)
             self.window_icon = self.window_icon.strip()
@@ -194,6 +202,18 @@ class App:
     def valid_password(self, entry_widget) -> bool:
         return True
 
+    @staticmethod
+    def entry_input_notice_template(entry_input_notice: str):
+        entry_input_notice = str(entry_input_notice)
+        return "要关闭所有窗口，请输入“{}”，并按回车：".format(
+            entry_input_notice)
+
+    def check_entry_input_notice(self):
+        entry_input_notice = self.show_text["entry_input_notice"]
+        if not self.use_entry_input_notice_default:
+            return entry_input_notice
+        return App.entry_input_notice_template(entry_input_notice)
+
     def generate_windows(self, total=5):
         assert isinstance(total, int) and total >= 0
         for count in range(total):
@@ -224,16 +244,13 @@ class App:
             (screen_width - window_width) // 2,
             (screen_height - window_height) // 2))
         root.resizable(False, False)
+        label = tkinter.Label(root)
+        entry = tkinter.Entry(root)
         if self.entry_input_type == EntryInputType.PASSWORD:
-            label = tkinter.Label(
-                root, text="要关闭所有窗口，请输入密码，并按回车：")
-            entry = tkinter.Entry(root, show="*")
+            label.config(text="要关闭所有窗口，请输入密码，并按回车：")
+            entry.config(show="*")
         else:
-            label = tkinter.Label(
-                root,
-                text="要关闭所有窗口，请输入“{}”，并按回车：".format(
-                    self.show_text["entry_input_notice"]))
-            entry = tkinter.Entry(root)
+            label.config(text=self.check_entry_input_notice())
         label.pack(fill=tkinter.X)
         entry.pack(fill=tkinter.X)
         task_finished = False
@@ -296,7 +313,12 @@ class App:
                     return
             root.quit()
             root.destroy()
-            self.cmd_queue.put("quit")
+            if not self.show_notice_after_sub_windows_destroyed:
+                return
+            self.call_hook("notice_after_sub_windows_destroyed")
+            msgbox.showinfo(
+                self.window_titles["notice_after_sub_windows_destroyed"],
+                self.show_text["notice_after_sub_windows_destroyed"])
         root.protocol("WM_DELETE_WINDOW", quit_window)
         self.call_hook("entry_input_notice")
         root.mainloop()
