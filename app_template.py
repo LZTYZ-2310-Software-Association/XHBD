@@ -225,7 +225,7 @@ class App:
 
     def check_entry_input_notice(self):
         entry_input_notice = self.show_text["entry_input_notice"]
-        if not self.use_entry_input_notice_default:
+        if not self.use_entry_input_notice_template:
             return entry_input_notice
         return App.entry_input_notice_template(entry_input_notice)
 
