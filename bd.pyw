@@ -36,7 +36,7 @@ class CustomApp(App):
         self.entry_input_type = EntryInputType.PLAIN
         self.entry_clear_status = EntryClearStatus.ON
         self.window_close_action = WindowCloseAction.ASK_BEFORE_CLOSE
-        self.window_icon = os.path.join(app_path, "谢恒病毒.ico")
+        self.window_icon = os.path.join(app_path, "xh.ico")
         # self.sub_window_total = 20
         # self.sub_window_width = 600
         self.sub_window_height = 250
